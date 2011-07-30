@@ -76,10 +76,24 @@ except ImportError:
 def diffcatalogs(repopath):
     '''Recreates the catalogs in /tmp and reports differences'''
     diffdir = os.path.join('/tmp','munkiwork')
+    diffcatalogsdir = os.path.join(diffdir,'catalogs')
     if os.path.exists(diffdir):
         print >> sys.stderr, "tmp workspace already exists! Remove %s to continue." % diffdir
         exit(-1)
+    else:
+        os.mkdir(diffdir)
+        os.mkdir(diffcatalogsdir)
 
+        for item in listdir(repopath):
+            if item == "catalogs":
+                continue
+            dst_dir = os.path.join(diffdir,item)
+            src_dir = os.path.join(repopath,item)
+            if not os.path.islink(dst_dir):
+                os.symlink(src_dir, dst_dir)
+
+        # next step is to run `makecatalogs diffpath`
+        # then run diff on diffdir/catalogs/* and repodir/catalogs/*
 
 def main():
     '''Main'''
@@ -101,7 +115,7 @@ def main():
     if not os.path.exists(repopath):
         print >> sys.stderr, "Repo root path %s doesn't exist!" % repopath
         exit(-1)
-            
+
     diffcatalogs(repopath)
 
 if __name__ == '__main__':
