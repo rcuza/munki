@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#      http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+diffcatalogs
+
+Created by Raul Cuza on 2011-08-29
+
+Uses makecatalogs to determine if there are any changes that need to be processed. 
+
+Assumes a pkgsinfo directory under repopath.
+User calling this needs to be able to read repo/catalogs and write to /tmp.
+
+"""
+
+import sys
+import os
+import optparse
+
+try:
+    from munkilib import FoundationPlist as plistlib
+except ImportError:
+    try:
+        import FoundationPlist as plistlib
+    except ImportError:
+        # maybe we're not on an OS X machine...
+        print >> sys.stderr, ("WARNING: FoundationPlist is not available, "
+                              "using plistlib instead.")
+        import plistlib
+        
+try:
+    from munkilib.munkicommon import listdir, get_version
+except ImportError:
+    # munkilib is not available
+    def listdir(path):
+        """OSX HFS+ string encoding safe listdir().
+
+        Args:
+            path: path to list contents of
+        Returns:
+            list of contents, items as str or unicode types
+        """
+        # if os.listdir() is supplied a unicode object for the path,
+        # it will return unicode filenames instead of their raw fs-dependent
+        # version, which is decomposed utf-8 on OSX.
+        #
+        # we use this to our advantage here and have Python do the decoding
+        # work for us, instead of decoding each item in the output list.
+        #
+        # references:
+        # http://docs.python.org/howto/unicode.html#unicode-filenames
+        # http://developer.apple.com/library/mac/#qa/qa2001/qa1235.html
+        # http://lists.zerezo.com/git/msg643117.html
+        # http://unicode.org/reports/tr15/    section 1.2
+        if type(path) is str:
+            path = unicode(path, 'utf-8')
+        elif type(path) is not unicode:
+            path = unicode(path)
+        return os.listdir(path)
+        
+    def get_version():
+        '''Placeholder if munkilib is not available'''
+        return 'UNKNOWN'
+
+def diffcatalogs(repopath):
+    '''Recreates the catalogs in /tmp and reports differences'''
+    diffdir = os.path.join('/tmp','munkiwork')
+    if os.path.exists(diffdir):
+        print >> sys.stderr, "tmp workspace already exists! Remove %s to continue." % diffdir
+        exit(-1)
+
+
+def main():
+    '''Main'''
+    usage = "usage: %prog [options] /path/to/repo_root"
+    p = optparse.OptionParser(usage=usage)
+    p.add_option('--version', '-V', action='store_true',
+                      help='Print the version of the munki tools and exit.')
+    options, arguments = p.parse_args()
+    
+    if options.version:
+        print get_version()
+        exit(0)
+    
+    if len(arguments) == 0:
+        print >> sys.stderr, "Need to specify a path to the repo root!"
+        exit(-1)
+        
+    repopath = arguments[0].rstrip("/")
+    if not os.path.exists(repopath):
+        print >> sys.stderr, "Repo root path %s doesn't exist!" % repopath
+        exit(-1)
+            
+    diffcatalogs(repopath)
+
+if __name__ == '__main__':
+    main()
+
